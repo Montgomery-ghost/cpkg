@@ -41,12 +41,13 @@ extern const char *help_message; // 帮助信息字符串
 // 简要帮助信息宏
 #define less_info_cpkg() \
     printf(\
-    "输入 dpkg --help 可获得安装和卸载软件包的有关帮助 [*]; \n" \
-    "使用 apt 或是 aptitude 就能在友好的界面下管理软件包；\n" \
-    "输入 dpkg -Dhelp 可看到 dpkg 除错标志的值的列表；\n" \
-    "输入 dpkg --force-help 可获得所有强制操作选项的列表；\n" \
-    "输入 dpkg-deb --help 可获得有关操作 *.deb 文件的帮助；\n" \
-    "\n带有 [*] 的选项将会输出较大篇幅的文字 - 可使用管道将其输出连接到 less 或 more ! \n")
+    "\n"\
+    "Type cpkg --help for help about installing and removing packages [*]; \n" \
+    "Use capt for a friendly package management interface;\n" \
+    "Type cpkg -Dhelp for a list of dpkg debugging flag values;\n" \
+    "Type cpkg --force-help for a list of all forcing options;\n" \
+    "Type cpkg-deb --help for help about manipulating *.deb files;\n" \
+    "\nOptions marked [*] produce a lot of output - pipe it through 'less' or 'more' ! \n")
 
 #define full_info_cpkg() \
     for(int idx = 0; help_message[idx] != '\0'; idx++) { \
