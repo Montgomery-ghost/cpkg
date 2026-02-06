@@ -133,6 +133,58 @@ int check_hash(FILE *pkg_file, const unsigned char *expected_hash)
 }
 
 /**
+ * @brief 计算软件包文件的 SHA256 哈希（从头部之后开始计算）
+ * @param pkg_file 软件包文件指针
+ * @param out_hash 输出缓冲区，至少为 SHA256_DIGEST_LENGTH 字节
+ * @return 0 表示成功，非0表示失败
+ */
+int compute_hash(FILE *pkg_file, unsigned char *out_hash)
+{
+    EVP_MD_CTX *mdctx;
+    unsigned char hash[EVP_MAX_MD_SIZE];
+    unsigned int hash_len;
+    unsigned char buffer[4096];
+    size_t bytes_read;
+
+    if (out_hash == NULL) {
+        return -1;
+    }
+
+    mdctx = EVP_MD_CTX_new();
+    if (mdctx == NULL) {
+        return -1;
+    }
+
+    if (!EVP_DigestInit_ex(mdctx, EVP_sha256(), NULL)) {
+        EVP_MD_CTX_free(mdctx);
+        return -1;
+    }
+
+    fseek(pkg_file, CPK_HEADER_SIZE, SEEK_SET); // 跳过头部
+
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer), pkg_file)) != 0) {
+        if (!EVP_DigestUpdate(mdctx, buffer, bytes_read)) {
+            EVP_MD_CTX_free(mdctx);
+            return -1;
+        }
+    }
+
+    if (!EVP_DigestFinal_ex(mdctx, hash, &hash_len)) {
+        EVP_MD_CTX_free(mdctx);
+        return -1;
+    }
+
+    EVP_MD_CTX_free(mdctx);
+
+    if (hash_len != SHA256_DIGEST_LENGTH) {
+        return -1;
+    }
+
+    memcpy(out_hash, hash, SHA256_DIGEST_LENGTH);
+    return 0;
+}
+
+/**
  * @brief 压缩指定目录内容为 tar.gz 格式并写入文件
  * @param pkg_file 目标文件指针
  * @param install_dir 要压缩的目录路径

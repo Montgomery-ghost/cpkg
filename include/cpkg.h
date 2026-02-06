@@ -83,6 +83,7 @@ typedef struct {
 int check_sudo_privileges(void); // 检查 sudo 权限
 int read_cpk_header(FILE *pkg_file, CPK_Header *header); // 读取 CPK 头部
 int check_hash(FILE *pkg_file, const unsigned char *expected_hash); // 检查哈希值
+int compute_hash(FILE *pkg_file, unsigned char *out_hash); // 计算文件哈希（从头部后开始计算）
 // int add_directory_to_archive_recursive(struct archive *a, const char *base_dir, const char *current_dir, int depth); // 递归添加目录到归档
 int compress_package(FILE *pkg_file, const char *install_dir); // 压缩目录内容
 int uncompress_package(FILE *pkg_file, const char *install_dir); // 解压缩软件包内容

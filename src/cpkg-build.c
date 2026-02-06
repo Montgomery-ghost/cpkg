@@ -209,10 +209,8 @@ int build_package(const char* build_path)
     
     // 计算文件的哈希值
     unsigned char calculated_hash[SHA256_DIGEST_LENGTH];
-    if (check_hash(pkg_file, calculated_hash) != 0)
+    if (compute_hash(pkg_file, calculated_hash) != 0)
     {
-        // 注意：check_hash 函数实际上会计算哈希值，但这里我们需要用它来计算
-        // 由于 check_hash 函数设计为验证哈希，我们需要重新计算
         cpk_printf(ERROR, "Failed to calculate hash of package file\n");
         fclose(pkg_file);
         return -1;
