@@ -25,21 +25,7 @@
  * @return 0 表示成功，非0表示失败
  */
 int install_package(const char *pkg_path) 
-{
-    // sudo 权限检查
-    if (check_sudo_privileges()) 
-    {
-        cpk_printf(ERROR, "This operation requires sudo privileges.\n");
-        return 1; // 返回1表示失败
-    }
-
-    if(!pkg_path)
-    {
-        cpk_printf(ERROR, "--install requires at least one package file as an argument.\n");
-        less_info_cpkg();
-        return 1; // 返回1表示失败
-    }
-    
+{ 
     // 检查软件包文件是否存在
     FILE *pkg_file = fopen(pkg_path, "rb");
     if (!pkg_file) 

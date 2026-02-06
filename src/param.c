@@ -20,6 +20,6 @@
 struct option long_options[] = {
     {"help", no_argument, 0, 'h'},
     {"version", no_argument, 0, 'v'},
-    {"install", required_argument, 0, 'i'},
-    {"remove", required_argument, 0, 'r'},
+    {"install", optional_argument, 0, 'i'},
+    {"remove", optional_argument, 0, 'r'},
 };

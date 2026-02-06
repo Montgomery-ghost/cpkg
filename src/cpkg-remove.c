@@ -27,20 +27,6 @@
  */
 int remove_package(const char *pkg_name) 
 {
-    // sudo 权限检查
-    if (check_sudo_privileges()) 
-    {
-        cpk_printf(ERROR, "This operation requires sudo privileges.\n");
-        return 1; // 返回1表示失败
-    }
-
-    if (!pkg_name)
-    {
-        cpk_printf(ERROR, "--remove (without --pending) needs at least one package name argument\n");
-        less_info_cpkg();
-        return 1; // 返回1表示失败
-    }
-    
     // 构建已安装包日志文件路径
     char pkg_path[512];
     snprintf(pkg_path, sizeof(pkg_path), "%s/%s", WORK_DIR, INSTALLED_LOG_FILE);

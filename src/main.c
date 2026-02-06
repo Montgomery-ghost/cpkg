@@ -31,39 +31,54 @@ int main(int argc, char *argv[])
     // 处理命令行参数
     if(argc < 2)
     {
-        cpk_printf(ERROR, "No command specified. Use -h or --help for help.\n");
+        cpk_printf(ERROR, "No command specified.\n");
         less_info_cpkg();
         return 1;
     }
 
     // 解析命令行参数
-    while((opt = getopt_long(argc, argv, "hvi:r", long_options, &option_index)) != -1)
+    while((opt = getopt_long(argc, argv, "hvir", long_options, &option_index)) != -1)
     {
         switch(opt)
         {
             case 'h': // 帮助信息
                 full_info_cpkg();
                 return 0;
+
             case 'v': // 版本信息
                 cpkg_version();
                 return 0;
-            case 'i':
-                if (optarg)
-                    install_package(optarg);
-                else {
-                    less_info_cpkg();
-                    return 1;
+
+            case 'i': // 安装包
+                if(!check_sudo_privileges())
+                {
+                    if (optarg)
+                        install_package(optarg);
+                    else {
+                        cpk_printf(ERROR, "--install requires at least one package file as an argument\n");
+                        less_info_cpkg();
+                        break;
+                    }
                 }
+                cpk_printf(ERROR, "This operation requires sudo privileges.\n");
                 break;
-            case 'r':
-                if (optarg)
-                    remove_package(optarg);
-                else {
-                    less_info_cpkg();
-                    return 1;
+
+            case 'r': // 卸载包
+                if(!check_sudo_privileges())
+                {
+                    if (optarg)
+                        remove_package(optarg);
+                    else {
+                        cpk_printf(ERROR, "--remove (without --pending) needs at least one package name argument\n");
+                        less_info_cpkg();
+                        break;
+                    }
                 }
+                cpk_printf(ERROR, "This operation requires sudo privileges.\n");
                 break;
+
             default:
+                cpk_printf(ERROR, "Invalid option: -%c\n", opt);
                 less_info_cpkg();
                 return 1;
         }
