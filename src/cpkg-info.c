@@ -29,27 +29,5 @@
  */
 int info_package(const char *package_path)
 {
-    FILE *file = fopen(package_path, "rb");
-    if (file == NULL) 
-    {
-        cpk_printf(ERROR, "无法打开软件包文件: %s\n", package_path);
-        return 1;
-    }
-
-    CPK_Header header;
-    if (!read_cpk_header(file, &header)) 
-    {
-        cpk_printf(ERROR, "无法读取软件包头部信息\n");
-        fclose(file);
-        return 1;
-    }
-
-    printf("软件包名称: %s\n", header.name);
-    printf("    版本号: %u\n", header.version);
-    printf("    描述: %s\n", header.description);
-    printf("    作者: %s\n", header.author);
-    printf("    许可证: %s\n", header.license);
-
-    fclose(file);
     return 0;
 }

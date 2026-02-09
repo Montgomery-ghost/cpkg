@@ -62,7 +62,7 @@ extern const char *help_message; // 帮助信息字符串
     "Use capt for a friendly package management interface;\n" \
     "Type cpkg -Dhelp for a list of dpkg debugging flag values;\n" \
     "Type cpkg --force-help for a list of all forcing options;\n" \
-    "Type cpkg-deb --help for help about manipulating *.deb files;\n" \
+    "Type cpkg --make-help for help about manipulating *.cpk files;\n" \
     "\nOptions marked [*] produce a lot of output - pipe it through 'less' or 'more' ! \n")
 
 #define full_info_cpkg() \

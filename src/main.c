@@ -40,63 +40,68 @@ int main(int argc, char *argv[])
     }
 
     // 解析命令行参数
-    while((opt = getopt_long(argc, argv, "hvirm", long_options, &option_index)) != -1)
+    // 将选项字符串修改为 "hvi:r:m:"，表示 i, r, m 需要参数
+while((opt = getopt_long(argc, argv, "hvi:r:m:", long_options, &option_index)) != -1)
+{
+    switch(opt)
     {
-        switch(opt)
-        {
-            case 'h': // 帮助信息
-                full_info_cpkg();
-                return 0;
+        case 'h':
+            full_info_cpkg();
+            return 0;
 
-            case 'v': // 版本信息
-                cpkg_version();
-                return 0;
+        case 'v':
+            cpkg_version();
+            return 0;
 
-            case 'i': // 安装包
-                if(!check_sudo_privileges())
-                {
-                    if (optarg)
-                        install_package(optarg);
-                    else {
-                        cpk_printf(ERROR, "--install requires at least one package file as an argument\n");
-                        less_info_cpkg();
-                        break;
-                    }
-                }
+        case 'i':
+            if(check_sudo_privileges() != 0) {
                 cpk_printf(ERROR, "This operation requires sudo privileges.\n");
-                break;
-
-            case 'r': // 卸载包
-                if(!check_sudo_privileges())
-                {
-                    if (optarg)
-                        remove_package(optarg);
-                    else {
-                        cpk_printf(ERROR, "--remove (without --pending) needs at least one package name argument\n");
-                        less_info_cpkg();
-                        break;
-                    }
-                }
-                cpk_printf(ERROR, "This operation requires sudo privileges.\n");
-                break;
-
-            case 'm':// 构建包
-                if (optarg)
-                {
-                    build_package(optarg);
-                }
-                else {
-                    cpk_printf(ERROR, "--make-build requires at least one directory name argument\n");
-                    less_info_cpkg();
-                    break;
-                }
-                break;
-                
-            default:
-                cpk_printf(ERROR, "Invalid option: -%c\n", opt);
+                return 1;
+            }
+            if (optarg) {
+                install_package(optarg);
+            } else {
+                cpk_printf(ERROR, "--install requires at least one package file as an argument\n");
                 less_info_cpkg();
                 return 1;
-        }
+            }
+            break;
+
+        case 'r':
+            if(check_sudo_privileges() != 0) {
+                cpk_printf(ERROR, "This operation requires sudo privileges.\n");
+                return 1;
+            }
+            if (optarg) {
+                remove_package(optarg);
+            } else {
+                cpk_printf(ERROR, "--remove needs at least one package name argument\n");
+                less_info_cpkg();
+                return 1;
+            }
+            break;
+
+        case 'm':
+            if (optarg) {
+                build_package(optarg);
+            } else {
+                cpk_printf(ERROR, "--make-build requires at least one directory name argument\n");
+                less_info_cpkg();
+                return 1;
+            }
+            break;
+            
+        default:
+            cpk_printf(ERROR, "Invalid option: -%c\n", opt);
+            less_info_cpkg();
+            return 1;
     }
+}
+
+// 处理非选项参数（备用方案）
+if (optind < argc) {
+    // 如果有非选项参数，可以作为命令处理
+    cpk_printf(INFO, "Non-option argument: %s\n", argv[optind]);
+}
     return 0;
 }
