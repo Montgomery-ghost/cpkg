@@ -19,68 +19,59 @@
 #define CPKG_H
 
 #include <stdio.h>
-#include <stdint.h>
-#include <openssl/sha.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
 
-// ========================== 魔术字定义 ==========================
-#define CPK_MAGIC "CPK\x01"             // CPK 魔术字
-#define CPK_MAGIC_LEN 4                 // 魔术字长度  
-#define CPK_HEADER_SIZE sizeof(CPK_Header)  // 头部大小
+#define MAX_PATH_LEN 1024 // 最大路径长度
+#define CONTROL "control" // 控制文件名
+#define META_DIR_NAME "CPKG" // 元数据文件名
+#define WORK_DIR_NAME "cpkg-work" // 工作目录名
+#define INSTALL_DIR "installed" // 安装目录名
 
-// ========================== 通用常量 ==========================
-#define MAX_PATH_LEN 1024               // 最大路径长度
-#define MAX_LINE_LEN 4096                // 最大行长度,应该没人能写这么长吧？
-#define MAX_FILES 256                // 最大文件数量，超出的人你在写linux?
-#define CPK_INCLUDE_DIR "/usr/include" // 默认 include 安装目录
-#define CPK_LIB_DIR "/usr/lib"         // 默认 lib 安装目录
-#define WORK_DIR "/usr/bin/cpkg"       // 工作目录
-#define INSTALL_DIR "installed"   // 软件包安装目录
-#define INSTALLED_LOG_FILE "installed.file"   // 已安装包文件
-#define MAX_COMMAND_LEN 4096            // 最大命令长度
-#define META_DIR "CPKG"               // 元数据目录
-#define CONTROL_FILE "control"          // 包含软件包最基本的元数据
-
-// ========================== 结构体定义 ==========================
 typedef struct {
-    int include_header_files_num; // 头文件数量
-    int lib_files_num; // 库文件数量
-    char package[MAX_LINE_LEN];    // 软件包名
-    char version[MAX_LINE_LEN]; // 软件包版本
-    char description[MAX_LINE_LEN]; // 软件包描述
-    char maintainer[MAX_LINE_LEN]; // 维护者信息
-    char license[MAX_LINE_LEN]; // 许可证类型
-    // char dependencies[MAX_LINE_LEN]; // 依赖关系，逗号分隔
-    char homepage[MAX_LINE_LEN]; // 主页链接
-    // char section[MAX_LINE_LEN]; // 软件包分类
-    // char architecture[MAX_LINE_LEN]; // 软件包架构
-    char include_header_files[MAX_FILES][MAX_LINE_LEN]; // 头文件位置
-    char lib_files[MAX_FILES][MAX_LINE_LEN]; // 库文件位置
-    //char bin_files[MAX_FILES][MAX_LINE_LEN]; // 可执行文件位置
-    // char data_files[MAX_FILES][MAX_LINE_LEN]; // 数据文件位置
-    char include_install_dir[MAX_LINE_LEN]; // 头文件安装地点
-    char lib_install_dir[MAX_LINE_LEN]; // 库文件安装地点
-} ControlInfo;
+    char name[MAX_PATH_LEN]; // 包名
+    char version[MAX_PATH_LEN]; // 版本号
+    char description[MAX_PATH_LEN]; // 描述
+    char homepage[MAX_PATH_LEN]; // 主页
+    char author[MAX_PATH_LEN]; // 作者
+    char license[MAX_PATH_LEN]; // 许可证
+    char include_install_path[MAX_PATH_LEN]; // 安装路径
+    char lib_install_path[MAX_PATH_LEN]; // 构建路径
+    char **include_files; // 头文件列表
+    char **lib_files; // 库文件列表
+    int include_file_count; // 头文件数量
+    int lib_file_count; // 库文件数量
+} Control_Info;
 
-// ========================== 数据结构 ===========================
-// ========================== 数据结构 ===========================
 typedef struct {
-    char magic[CPK_MAGIC_LEN]; // 魔术字
-    unsigned char hash[SHA256_DIGEST_LENGTH]; // 哈希值
-    ControlInfo control_info; // 控制信息
+    char magic[4]; // 魔数
+    char hash[65]; // 哈希值
+    char name[MAX_PATH_LEN]; // 包名
+    char version[MAX_PATH_LEN]; // 版本号
+    char description[MAX_PATH_LEN]; // 描述
+    char homepage[MAX_PATH_LEN]; // 主页
+    char author[MAX_PATH_LEN]; // 作者
+    char license[MAX_PATH_LEN]; // 许可证
+    char include_install_path[3*MAX_PATH_LEN]; // 安装路径
+    char lib_install_path[3*MAX_PATH_LEN]; // 构建路径
 } CPK_Header;
 
-// ======================== 内部函数声明 =========================
-int check_sudo_privileges(void); // 检查 sudo 权限
-int mkdir_p(const char* path); // 创建目录树
-int copy_file(const char* src_path_file, const char* dst_path_file); // 复制文件
-int build_file(const char* src_path_file, const char* dst_path_file, const char* build_path); // 构建文件
-int read_control_file(FILE* control_file, ControlInfo* control_info); // 解析控制文件
-void print_control_info(ControlInfo* control_info); // 打印控制信息
+int check_sudo_privileges(void); // 检查是否有root权限
+int tf_choose(const char *msg); // 选择yes或no
+int mkdir_p(const char *path, mode_t mode); // 创建目录
+int cp_file(const char *src_file, const char *dst_dir); // 复制文件
+int rm_rf(const char *del_dir); // 删除目录
+int extract_archive(FILE *fp, const char *dest); // 解压tar.gz压缩包
+char *archive_create_tgz(const char *src_dir, size_t *out_len); // 创建tar.gz压缩包
+CPK_Header *make_Header(Control_Info *ctrl_info); // 创建CPK头文件
+char *sha256_mem(const unsigned char *data, size_t len); // 计算哈希值
+Control_Info *read_control_info(FILE *fp); // 读取控制文件
+void printf_control_info(Control_Info *ctrl_info); // 打印控制信息
+off_t get_file_size(const char *path); // 获取文件大小
 
-// ========================== 函数声明 ===========================
-int info_package(const char *pkg_path);         // 查询软件包信息
-int install_package(const char *pkg_path);      // 安装单个软件包
-int remove_package(const char *pkg_name);       // 移除单个软件包
-int build_package(const char *build_path);        // 构建软件包
+int install_package(const char *pkg_path);
+int remove_package(const char *pkg_name);
+int make_build_package(const char *package_path_dir);
 
 #endif // CPKG_H

@@ -4,7 +4,7 @@ VERSION = 0.0.0.2
 
 # 编译器设置
 CC = gcc
-CFLAGS = -Wall -Wextra -O2 -std=c11
+CFLAGS = -Wall -Wextra -Werror -O2 -g
 LDFLAGS = -larchive -lcrypto -lssl -lm
 
 # 目录设置
@@ -221,5 +221,4 @@ help:
 # 默认目标
 .DEFAULT_GOAL := help
 
-.PHONY: all clean distclean install uninstall run debug \
-        dist-src dist-bin dist-zip dist-deb dist-all check-deps help info
+.PHONY: all clean distclean install uninstall run debug dist-src dist-bin dist-zip dist-deb dist-all check-deps help info

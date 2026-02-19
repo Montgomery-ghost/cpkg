@@ -1,157 +1,235 @@
-/*
- * Copyright (C) 2025 lemonade_NingYou
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "../include/cpkg.h"
 #include "../include/help.h"
 
-/** 
- * @brief 构建软件包
- * @param build_path 构建路径
- * @return 0 成功，其他失败
- */
-int build_package(const char* build_path)
+int make_build_package(const char *package_path_dir)
 {
-    // 1. 读取控制文件
-    ControlInfo control_info = {0};
+    // 复制路径并去掉末尾的 '/'
+    char *package_path = strdup(package_path_dir);
+    if (!package_path) {
+        cpk_printf(ERROR, "Memory allocation failed.\n");
+        return 1;
+    }
+    size_t len = strlen(package_path);
+    if (len > 0 && package_path[len - 1] == '/')
+        package_path[len - 1] = '\0';
 
-    char control_file_path[MAX_PATH_LEN]; // 控制文件路径
-    snprintf(control_file_path, sizeof(control_file_path), "%s/%s/%s", build_path, META_DIR, CONTROL_FILE);
-    FILE* control_file = fopen(control_file_path, "r");
-    if (!control_file) {
-        cpk_printf(ERROR, "Failed to open control file: %s\n", control_file_path);
+    printf("the path is \"%s\"\n", package_path);
+    printf("Is finding control file...\n");
+
+    // 拼接 control 文件路径
+    char *ctrl_file_path = NULL;
+    if (asprintf(&ctrl_file_path, "%s/%s/control", package_path, META_DIR_NAME) == -1) {
+        cpk_printf(ERROR, "Memory allocation failed.\n");
+        free(package_path);
+        return 1;
+    }
+    FILE *ctrl_file = fopen(ctrl_file_path, "r");
+    if (!ctrl_file) {
+        printf("control file not found.\n");
+        free(ctrl_file_path);
+        free(package_path);
         return 1;
     }
 
-    // 解析控制文件
-    if(read_control_file(control_file, &control_info) != 0) 
-    {
-        cpk_printf(ERROR, "Failed to parse control file: %s\n", control_file_path);
-        fclose(control_file);
+    Control_Info *ctrl_info = read_control_info(ctrl_file);
+    if (!ctrl_info) {
+        cpk_printf(ERROR, "Error: read control file failed.\n");
+        fclose(ctrl_file);
+        free(ctrl_file_path);
+        free(package_path);
         return 1;
     }
-    fclose(control_file);
+    fclose(ctrl_file);
 
-    // 打印控制信息
-    print_control_info(&control_info);
+    printf("OK, I find the control file.\n");
+    printf("and look at the info, it is true?\n\n");
 
-    // 检查必需字段
-    if (strlen(control_info.package) == 0) {
-        cpk_printf(ERROR, "Package name is empty!\n");
+    char cwd[1024];
+    if (!getcwd(cwd, sizeof(cwd))) {
+        cpk_printf(ERROR, "Error: get current working directory failed.\n");
+        free(ctrl_file_path);
+        free(package_path);
+        free(ctrl_info);   // 需要实现此函数，或手动释放
         return 1;
     }
+    printf_control_info(ctrl_info);
 
-    // 1. 创建构建目录
-    char install_dir[MAX_PATH_LEN]; // 构建目录
-    snprintf(install_dir, sizeof(install_dir), "%s/%s-build", build_path, control_info.package);
-    if(mkdir_p(install_dir))
-    {
-        cpk_printf(ERROR, "Failed to create install directory: %s\n", install_dir); 
-        return 1;
-    }
-    
-    // 创建control_info结构体的二进制文件，写入安装目录
-    char control_info_file_path[MAX_PATH_LEN]; // 控制文件路径
-    snprintf(control_info_file_path, sizeof(control_info_file_path), "%s/%s", install_dir, CONTROL_FILE);
-    control_file = fopen(control_info_file_path, "wb");
-    if (!control_file) 
-    {
-        cpk_printf(ERROR, "Failed to open control file: %s\n", control_info_file_path);
-        return 1;
+    if (tf_choose("If you want to build the package, please enter 'y', or enter 'n' to stop build the package.")) {
+        printf("OK, I will stop build the package.\n");
+        free(ctrl_file_path);
+        free(package_path);
+        free(ctrl_info);
+        return 0;
     }
 
-    // 写入控制文件
-    if(fwrite(&control_info, sizeof(ControlInfo), 1, control_file) != 1) 
-    {
-        cpk_printf(ERROR, "Failed to write control file: %s\n", control_info_file_path);
-        fclose(control_file);
-        return 1;
-    }
-    fclose(control_file);
+    printf("Is Building the package...\n");
 
-    // 2. 构建软件包
-    char include[MAX_PATH_LEN]; // 头文件安装目录
-    char lib[MAX_PATH_LEN]; // 库文件安装目录
-    snprintf(include, sizeof(include), "%s/include", install_dir);
-    snprintf(lib, sizeof(lib), "%s/lib", install_dir);
-    if(mkdir_p(include))
-    {
-        cpk_printf(ERROR, "Failed to create include directory: %s\n", include);
+    // 动态构建 build_path
+    char *build_path = NULL;
+    if (asprintf(&build_path, "%s/%s/%s", cwd, package_path, ctrl_info->name) == -1) {
+        cpk_printf(ERROR, "Memory allocation failed.\n");
+        free(ctrl_file_path);
+        free(package_path);
+        free(ctrl_info);
         return 1;
     }
-    if(mkdir_p(lib))
-    {
-        cpk_printf(ERROR, "Failed to create lib directory: %s\n", lib);
+    printf("build path is \"%s\"\n", build_path);
+
+    if (mkdir_p(build_path, 0755)) {
+        cpk_printf(ERROR, "Error: create build path failed.\n");
+        free(build_path);
+        free(ctrl_file_path);
+        free(package_path);
+        free(ctrl_info);
         return 1;
     }
 
-    // 复制头文件和库文件到安装目录
-    for(int i = 0; i < control_info.include_header_files_num; i++)
-    {
-        char dst[MAX_PATH_LEN]; // 头文件目标路径
-        // 提取头文件名
-        const char* header_filename = strrchr(control_info.include_header_files[i], '/');
-        if (header_filename) {
-            header_filename++; // 跳过 '/'
-        } else {
-            header_filename = control_info.include_header_files[i]; // 没有 '/'，直接使用文件名
+    // 拷贝头文件
+    printf("Is copying include files...\n");
+    for (int i = 0; i < ctrl_info->include_file_count; i++) {
+        char *dst_dir = NULL;
+        if (asprintf(&dst_dir, "%s/include/", build_path) == -1) {
+            cpk_printf(ERROR, "Memory allocation failed.\n");
+            goto error;
         }
-        snprintf(dst, sizeof(dst), "%s/%s", include, header_filename);
-        if(copy_file(control_info.include_header_files[i], dst))
-        {
-            cpk_printf(ERROR, "Failed to copy header file: %s to %s\n", control_info.include_header_files[i], dst);
-            return 1;
+        if (mkdir_p(dst_dir, 0755)) {
+            cpk_printf(ERROR, "Error: create include path failed.\n");
+            free(dst_dir);
+            goto error;
         }
-    }
-    for(int i = 0; i < control_info.lib_files_num; i++)
-    {
-        char dst[MAX_PATH_LEN]; // 库文件目标路径
-        // 提取库文件名
-        const char* lib_filename = strrchr(control_info.lib_files[i], '/');
-        if (lib_filename) {
-            lib_filename++; // 跳过 '/'
-        } else {
-            lib_filename = control_info.lib_files[i]; // 没有 '/'，直接使用文件名
+        if (cp_file(ctrl_info->include_files[i], dst_dir)) {
+            cpk_printf(ERROR, "Error: copy include file failed.\n");
+            free(dst_dir);
+            goto error;
         }
-        snprintf(dst, sizeof(dst), "%s/%s", lib, lib_filename);
-        if(copy_file(control_info.lib_files[i], dst))
-        {
-            cpk_printf(ERROR, "Failed to copy lib file: %s to %s\n", control_info.lib_files[i], dst);
-            return 1;
-        }
+        free(dst_dir);
     }
 
-    // 3. 开始压缩为 tar.gz 包并重命名为.cpk
-    // 注意：build_file 的第一个参数应该是要压缩的目录（install_dir），而不是build_path
-    if(build_file(install_dir, control_info.package, build_path))
-    {
-        cpk_printf(ERROR, "Failed to build package: %s\n", control_info.package);
-        return 1;
+    // 拷贝库文件
+    printf("Is copying lib files...\n");
+    for (int i = 0; i < ctrl_info->lib_file_count; i++) {
+        char *dst_dir = NULL;
+        if (asprintf(&dst_dir, "%s/lib/", build_path) == -1) {
+            cpk_printf(ERROR, "Memory allocation failed.\n");
+            goto error;
+        }
+        if (mkdir_p(dst_dir, 0755)) {
+            cpk_printf(ERROR, "Error: create lib path failed.\n");
+            free(dst_dir);
+            goto error;
+        }
+        if (cp_file(ctrl_info->lib_files[i], dst_dir)) {
+            cpk_printf(ERROR, "Error: copy lib file failed.\n");
+            free(dst_dir);
+            goto error;
+        }
+        free(dst_dir);
     }
 
-    // 4. 打印构建成功信息,并清理install_dir
-    cpk_printf(INFO, "Build package %s successfully.\n", control_info.package);
-    
-    // 清理安装目录
-    char rm_cmd[MAX_COMMAND_LEN];
-    snprintf(rm_cmd, sizeof(rm_cmd), "rm -rf %s", install_dir);
-    system(rm_cmd);
+    // 压缩
+    printf("Is compressing the package...\n");
+    size_t tgz_malloc_size = 0;
+    char *tgz_malloc_file = archive_create_tgz(build_path, &tgz_malloc_size);
+    if (!tgz_malloc_file) {
+        cpk_printf(ERROR, "Error: create tgz file failed.\n");
+        goto error;
+    }
+    printf("OK, I compress the package.\n");
 
+    // 创建头部
+    printf("Is making header file...\n");
+    CPK_Header *header = make_Header(ctrl_info);
+    if (!header) {
+        cpk_printf(ERROR, "Error: make header failed.\n");
+        free(tgz_malloc_file);
+        goto error;
+    }
+    printf("OK, I make the header file.\n");
+
+    // 计算哈希
+    printf("Is calculating hash value...\n");
+    char *hash = sha256_mem((const unsigned char *)tgz_malloc_file, tgz_malloc_size); // 强制转换
+    if (!hash) {
+        cpk_printf(ERROR, "Error: calculate hash failed.\n");
+        free(header);
+        free(tgz_malloc_file);
+        goto error;
+    }
+    strncpy(header->hash, hash, 64);
+    header->hash[64] = '\0';
+
+    // 写入 .cpk 文件
+    printf("Is writing header file...\n");
+    char *header_file_path = NULL;
+    if (asprintf(&header_file_path, "%s/%s/%s-%s.cpk", cwd, package_path,
+                 ctrl_info->name, ctrl_info->version) == -1) {
+        cpk_printf(ERROR, "Memory allocation failed.\n");
+        free(hash);
+        free(header);
+        free(tgz_malloc_file);
+        goto error;
+    }
+    FILE *header_file = fopen(header_file_path, "wb");
+    if (!header_file) {
+        cpk_printf(ERROR, "Error: create header file failed.\n");
+        free(header_file_path);
+        free(hash);
+        free(header);
+        free(tgz_malloc_file);
+        goto error;
+    }
+    if (fwrite(header, sizeof(CPK_Header), 1, header_file) != 1) {
+        cpk_printf(ERROR, "Error: write header file failed.\n");
+        fclose(header_file);
+        free(header_file_path);
+        free(hash);
+        free(header);
+        free(tgz_malloc_file);
+        goto error;
+    }
+    if (fwrite(tgz_malloc_file, tgz_malloc_size, 1, header_file) != 1) {
+        cpk_printf(ERROR, "Error: write header file failed.\n");
+        fclose(header_file);
+        free(header_file_path);
+        free(hash);
+        free(header);
+        free(tgz_malloc_file);
+        goto error;
+    }
+    fclose(header_file);
+    printf("OK, I build the package.\n");
+    printf("The package is saved in \"%s\"\n", header_file_path);
+    printf("The hash value is \"%s\"\n", hash);
+
+    // 清理临时构建目录
+    if (rm_rf(build_path))
+        cpk_printf(ERROR, "Error: remove build path failed.\n");
+
+    // 释放所有资源
+    free(header);
+    free(hash);
+    free(tgz_malloc_file);
+    free(header_file_path);
+    free(build_path);
+    free(ctrl_file_path);
+    free(package_path);
+    free(ctrl_info);   // 请确保实现了此函数
+    printf("Build package done.\n");
     return 0;
+
+error:
+    // 发生错误时清理已分配资源
+    if (build_path) {
+        rm_rf(build_path);   // 尝试删除已创建的目录
+        free(build_path);
+    }
+    free(ctrl_file_path);
+    free(package_path);
+    if (ctrl_info)
+        free(ctrl_info);
+    return 1;
 }

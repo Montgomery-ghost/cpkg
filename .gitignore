@@ -95,6 +95,8 @@ demo
 # Makefile构建目录
 build/
 dist/
+cpkg/
+cpkg-work/
 bin/
 obj/
 output/

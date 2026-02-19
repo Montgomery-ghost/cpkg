@@ -83,7 +83,7 @@ while((opt = getopt_long(argc, argv, "hvi:r:m:", long_options, &option_index)) !
 
         case 'm':
             if (optarg) {
-                build_package(optarg);
+                make_build_package(optarg);
             } else {
                 cpk_printf(ERROR, "--make-build requires at least one directory name argument\n");
                 less_info_cpkg();
